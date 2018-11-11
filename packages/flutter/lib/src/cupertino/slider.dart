@@ -14,6 +14,7 @@ import 'thumb_painter.dart';
 
 // Examples can assume:
 // int _cupertinoSliderValue = 1;
+// void setState(VoidCallback fn) { }
 
 /// An iOS-style slider.
 ///
@@ -83,7 +84,7 @@ class CupertinoSlider extends StatefulWidget {
   /// gets rebuilt; for example:
   ///
   /// ```dart
-  /// new CupertinoSlider(
+  /// CupertinoSlider(
   ///   value: _cupertinoSliderValue.toDouble(),
   ///   min: 1.0,
   ///   max: 10.0,
@@ -113,10 +114,10 @@ class CupertinoSlider extends StatefulWidget {
   /// The value passed will be the last [value] that the slider had before the
   /// change began.
   ///
-  /// ## Sample code
+  /// {@tool sample}
   ///
   /// ```dart
-  /// new CupertinoSlider(
+  /// CupertinoSlider(
   ///   value: _cupertinoSliderValue.toDouble(),
   ///   min: 1.0,
   ///   max: 10.0,
@@ -131,6 +132,7 @@ class CupertinoSlider extends StatefulWidget {
   ///   },
   /// )
   /// ```
+  /// {@end-tool}
   ///
   /// See also:
   ///
@@ -144,10 +146,10 @@ class CupertinoSlider extends StatefulWidget {
   /// [onChanged] for that), but rather to know when the user has completed
   /// selecting a new [value] by ending a drag.
   ///
-  /// ## Sample code
+  /// {@tool sample}
   ///
   /// ```dart
-  /// new CupertinoSlider(
+  /// CupertinoSlider(
   ///   value: _cupertinoSliderValue.toDouble(),
   ///   min: 1.0,
   ///   max: 10.0,
@@ -162,6 +164,7 @@ class CupertinoSlider extends StatefulWidget {
   ///   },
   /// )
   /// ```
+  /// {@end-tool}
   ///
   /// See also:
   ///
@@ -190,14 +193,14 @@ class CupertinoSlider extends StatefulWidget {
   final Color activeColor;
 
   @override
-  _CupertinoSliderState createState() => new _CupertinoSliderState();
+  _CupertinoSliderState createState() => _CupertinoSliderState();
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(new DoubleProperty('value', value));
-    properties.add(new DoubleProperty('min', min));
-    properties.add(new DoubleProperty('max', max));
+    properties.add(DoubleProperty('value', value));
+    properties.add(DoubleProperty('min', min));
+    properties.add(DoubleProperty('max', max));
   }
 }
 
@@ -222,7 +225,7 @@ class _CupertinoSliderState extends State<CupertinoSlider> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    return new _CupertinoSliderRenderObjectWidget(
+    return _CupertinoSliderRenderObjectWidget(
       value: (widget.value - widget.min) / (widget.max - widget.min),
       divisions: widget.divisions,
       activeColor: widget.activeColor ?? CupertinoColors.activeBlue,
@@ -256,7 +259,7 @@ class _CupertinoSliderRenderObjectWidget extends LeafRenderObjectWidget {
 
   @override
   _RenderCupertinoSlider createRenderObject(BuildContext context) {
-    return new _RenderCupertinoSlider(
+    return _RenderCupertinoSlider(
       value: value,
       divisions: divisions,
       activeColor: activeColor,
@@ -309,11 +312,11 @@ class _RenderCupertinoSlider extends RenderConstrainedBox {
        _onChanged = onChanged,
        _textDirection = textDirection,
        super(additionalConstraints: const BoxConstraints.tightFor(width: _kSliderWidth, height: _kSliderHeight)) {
-    _drag = new HorizontalDragGestureRecognizer()
+    _drag = HorizontalDragGestureRecognizer()
       ..onStart = _handleDragStart
       ..onUpdate = _handleDragUpdate
       ..onEnd = _handleDragEnd;
-    _position = new AnimationController(
+    _position = AnimationController(
       value: value,
       duration: _kDiscreteTransitionDuration,
       vsync: vsync,
@@ -331,6 +334,7 @@ class _RenderCupertinoSlider extends RenderConstrainedBox {
       _position.animateTo(newValue, curve: Curves.fastOutSlowIn);
     else
       _position.value = newValue;
+    markNeedsSemanticsUpdate();
   }
 
   int get divisions => _divisions;
@@ -453,7 +457,7 @@ class _RenderCupertinoSlider extends RenderConstrainedBox {
       _drag.addPointer(event);
   }
 
-  final CupertinoThumbPainter _thumbPainter = new CupertinoThumbPainter();
+  final CupertinoThumbPainter _thumbPainter = CupertinoThumbPainter();
 
   @override
   void paint(PaintingContext context, Offset offset) {
@@ -481,20 +485,20 @@ class _RenderCupertinoSlider extends RenderConstrainedBox {
     final double trackActive = offset.dx + _thumbCenter;
 
     final Canvas canvas = context.canvas;
-    final Paint paint = new Paint();
+    final Paint paint = Paint();
 
     if (visualPosition > 0.0) {
       paint.color = rightColor;
-      canvas.drawRRect(new RRect.fromLTRBXY(trackLeft, trackTop, trackActive, trackBottom, 1.0, 1.0), paint);
+      canvas.drawRRect(RRect.fromLTRBXY(trackLeft, trackTop, trackActive, trackBottom, 1.0, 1.0), paint);
     }
 
     if (visualPosition < 1.0) {
       paint.color = leftColor;
-      canvas.drawRRect(new RRect.fromLTRBXY(trackActive, trackTop, trackRight, trackBottom, 1.0, 1.0), paint);
+      canvas.drawRRect(RRect.fromLTRBXY(trackActive, trackTop, trackRight, trackBottom, 1.0, 1.0), paint);
     }
 
-    final Offset thumbCenter = new Offset(trackActive, trackCenter);
-    _thumbPainter.paint(canvas, new Rect.fromCircle(center: thumbCenter, radius: CupertinoThumbPainter.radius));
+    final Offset thumbCenter = Offset(trackActive, trackCenter);
+    _thumbPainter.paint(canvas, Rect.fromCircle(center: thumbCenter, radius: CupertinoThumbPainter.radius));
   }
 
   @override
@@ -503,8 +507,12 @@ class _RenderCupertinoSlider extends RenderConstrainedBox {
 
     config.isSemanticBoundary = isInteractive;
     if (isInteractive) {
+      config.textDirection = textDirection;
       config.onIncrease = _increaseAction;
       config.onDecrease = _decreaseAction;
+      config.value = '${(value * 100).round()}%';
+      config.increasedValue = '${((value + _semanticActionUnit).clamp(0.0, 1.0) * 100).round()}%';
+      config.decreasedValue = '${((value - _semanticActionUnit).clamp(0.0, 1.0) * 100).round()}%';
     }
   }
 

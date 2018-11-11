@@ -65,10 +65,10 @@ class CocoaPods {
     if (versionText == null)
       return CocoaPodsStatus.notInstalled;
     try {
-      final Version installedVersion = new Version.parse(versionText);
-      if (installedVersion < new Version.parse(cocoaPodsMinimumVersion))
+      final Version installedVersion = Version.parse(versionText);
+      if (installedVersion < Version.parse(cocoaPodsMinimumVersion))
         return CocoaPodsStatus.belowMinimumVersion;
-      else if (installedVersion < new Version.parse(cocoaPodsRecommendedVersion))
+      else if (installedVersion < Version.parse(cocoaPodsRecommendedVersion))
         return CocoaPodsStatus.belowRecommendedVersion;
       else
         return CocoaPodsStatus.recommended;
@@ -148,7 +148,7 @@ class CocoaPods {
     return true;
   }
 
-  /// Ensures the `ios` sub-project of the Flutter project at [appDirectory]
+  /// Ensures the given iOS sub-project of a parent Flutter project
   /// contains a suitable `Podfile` and that its `Flutter/Xxx.xcconfig` files
   /// include pods configuration.
   void setupPodfile(IosProject iosProject) {
@@ -156,13 +156,14 @@ class CocoaPods {
       // Don't do anything for iOS when host platform doesn't support it.
       return;
     }
-    if (!iosProject.directory.existsSync()) {
+    final Directory runnerProject = iosProject.xcodeProject;
+    if (!runnerProject.existsSync()) {
       return;
     }
     final File podfile = iosProject.podfile;
     if (!podfile.existsSync()) {
       final bool isSwift = xcodeProjectInterpreter.getBuildSettings(
-        iosProject.directory.childFile('Runner.xcodeproj').path,
+        runnerProject.path,
         'Runner',
       ).containsKey('SWIFT_VERSION');
       final File podfileTemplate = fs.file(fs.path.join(
@@ -218,11 +219,11 @@ class CocoaPods {
         || podfileLockFile.readAsStringSync() != manifestLockFile.readAsStringSync();
   }
 
-  Future<Null> _runPodInstall(IosProject iosProject, String engineDirectory) async {
+  Future<void> _runPodInstall(IosProject iosProject, String engineDirectory) async {
     final Status status = logger.startProgress('Running pod install...', expectSlowOperation: true);
     final ProcessResult result = await processManager.run(
       <String>['pod', 'install', '--verbose'],
-      workingDirectory: iosProject.directory.path,
+      workingDirectory: iosProject.hostAppRoot.path,
       environment: <String, String>{
         // For backward compatibility with previously created Podfile only.
         'FLUTTER_FRAMEWORK_DIR': engineDirectory,

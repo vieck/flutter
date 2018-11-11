@@ -11,6 +11,8 @@ import 'base/context.dart';
 import 'base/file_system.dart';
 import 'base/utils.dart';
 import 'build_info.dart';
+import 'fuchsia/fuchsia_device.dart';
+
 import 'globals.dart';
 import 'ios/devices.dart';
 import 'ios/simulators.dart';
@@ -24,10 +26,11 @@ class DeviceManager {
   /// of their methods are called.
   DeviceManager() {
     // Register the known discoverers.
-    _deviceDiscoverers.add(new AndroidDevices());
-    _deviceDiscoverers.add(new IOSDevices());
-    _deviceDiscoverers.add(new IOSSimulators());
-    _deviceDiscoverers.add(new FlutterTesterDevices());
+    _deviceDiscoverers.add(AndroidDevices());
+    _deviceDiscoverers.add(IOSDevices());
+    _deviceDiscoverers.add(IOSSimulators());
+    _deviceDiscoverers.add(FuchsiaDevices());
+    _deviceDiscoverers.add(FlutterTesterDevices());
   }
 
   final List<DeviceDiscovery> _deviceDiscoverers = <DeviceDiscovery>[];
@@ -121,7 +124,7 @@ abstract class DeviceDiscovery {
 
   /// Gets a list of diagnostic messages pertaining to issues with any connected
   /// devices (will be an empty list if there are no issues).
-  Future<List<String>> getDiagnostics() => new Future<List<String>>.value(<String>[]);
+  Future<List<String>> getDiagnostics() => Future<List<String>>.value(<String>[]);
 }
 
 /// A [DeviceDiscovery] implementation that uses polling to discover device adds
@@ -140,9 +143,9 @@ abstract class PollingDeviceDiscovery extends DeviceDiscovery {
 
   void startPolling() {
     if (_poller == null) {
-      _items ??= new ItemListNotifier<Device>();
+      _items ??= ItemListNotifier<Device>();
 
-      _poller = new Poller(() async {
+      _poller = Poller(() async {
         try {
           final List<Device> devices = await pollingGetDevices().timeout(_pollingTimeout);
           _items.updateWithNewList(devices);
@@ -160,17 +163,17 @@ abstract class PollingDeviceDiscovery extends DeviceDiscovery {
 
   @override
   Future<List<Device>> get devices async {
-    _items ??= new ItemListNotifier<Device>.from(await pollingGetDevices());
+    _items ??= ItemListNotifier<Device>.from(await pollingGetDevices());
     return _items.items;
   }
 
   Stream<Device> get onAdded {
-    _items ??= new ItemListNotifier<Device>();
+    _items ??= ItemListNotifier<Device>();
     return _items.onAdded;
   }
 
   Stream<Device> get onRemoved {
-    _items ??= new ItemListNotifier<Device>();
+    _items ??= ItemListNotifier<Device>();
     return _items.onRemoved;
   }
 
@@ -267,22 +270,18 @@ abstract class Device {
     bool ipv6 = false,
   });
 
-  /// Does this device implement support for hot reloading / restarting?
-  bool get supportsHotMode => true;
+  /// Whether this device implements support for hot reload.
+  bool get supportsHotReload => true;
+
+  /// Whether this device implements support for hot restart.
+  bool get supportsHotRestart => true;
 
   /// Stop an app package on the current device.
   Future<bool> stopApp(ApplicationPackage app);
 
   bool get supportsScreenshot => false;
 
-  Future<void> takeScreenshot(File outputFile) => new Future<Null>.error('unimplemented');
-
-  // TODO(dantup): discoverApps is no longer used and can possibly be removed.
-  // Waiting for a response here:
-  // https://github.com/flutter/flutter/pull/18873#discussion_r198862179
-  /// Find the apps that are currently running on this device.
-  Future<List<DiscoveredApp>> discoverApps() =>
-      new Future<List<DiscoveredApp>>.value(<DiscoveredApp>[]);
+  Future<void> takeScreenshot(File outputFile) => Future<void>.error('unimplemented');
 
   @override
   int get hashCode => id.hashCode;
@@ -321,19 +320,19 @@ abstract class Device {
     }
 
     // Calculate column widths
-    final List<int> indices = new List<int>.generate(table[0].length - 1, (int i) => i);
-    List<int> widths = indices.map((int i) => 0).toList();
+    final List<int> indices = List<int>.generate(table[0].length - 1, (int i) => i);
+    List<int> widths = indices.map<int>((int i) => 0).toList();
     for (List<String> row in table) {
-      widths = indices.map((int i) => math.max(widths[i], row[i].length)).toList();
+      widths = indices.map<int>((int i) => math.max(widths[i], row[i].length)).toList();
     }
 
     // Join columns into lines of text
     for (List<String> row in table) {
-      yield indices.map((int i) => row[i].padRight(widths[i])).join(' • ') + ' • ${row.last}';
+      yield indices.map<String>((int i) => row[i].padRight(widths[i])).join(' • ') + ' • ${row.last}';
     }
   }
 
-  static Future<Null> printDevices(List<Device> devices) async {
+  static Future<void> printDevices(List<Device> devices) async {
     await descriptions(devices).forEach(printStatus);
   }
 }
@@ -381,7 +380,7 @@ class LaunchResult {
 
   @override
   String toString() {
-    final StringBuffer buf = new StringBuffer('started=$started');
+    final StringBuffer buf = StringBuffer('started=$started');
     if (observatoryUri != null)
       buf.write(', observatory=$observatoryUri');
     return buf.toString();
@@ -412,7 +411,7 @@ abstract class DevicePortForwarder {
   Future<int> forward(int devicePort, {int hostPort});
 
   /// Stops forwarding [forwardedPort].
-  Future<Null> unforward(ForwardedPort forwardedPort);
+  Future<void> unforward(ForwardedPort forwardedPort);
 }
 
 /// Read the log for a particular device.

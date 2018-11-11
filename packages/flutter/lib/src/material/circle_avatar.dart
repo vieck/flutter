@@ -17,28 +17,32 @@ import 'theme_data.dart';
 /// such an image, the user's initials. A given user's initials should
 /// always be paired with the same background color, for consistency.
 ///
-/// ## Sample code
+/// {@tool sample}
 ///
 /// If the avatar is to have an image, the image should be specified in the
 /// [backgroundImage] property:
 ///
 /// ```dart
-/// new CircleAvatar(
-///   backgroundImage: new NetworkImage(userAvatarUrl),
+/// CircleAvatar(
+///   backgroundImage: NetworkImage(userAvatarUrl),
 /// )
 /// ```
+/// {@end-tool}
 ///
 /// The image will be cropped to have a circle shape.
+///
+/// {@tool sample}
 ///
 /// If the avatar is to just have the user's initials, they are typically
 /// provided using a [Text] widget as the [child] and a [backgroundColor]:
 ///
 /// ```dart
-/// new CircleAvatar(
+/// CircleAvatar(
 ///   backgroundColor: Colors.brown.shade800,
-///   child: new Text('AH'),
+///   child: Text('AH'),
 /// )
 /// ```
+/// {@end-tool}
 ///
 /// See also:
 ///
@@ -169,31 +173,31 @@ class CircleAvatar extends StatelessWidget {
     }
     final double minDiameter = _minDiameter;
     final double maxDiameter = _maxDiameter;
-    return new AnimatedContainer(
-      constraints: new BoxConstraints(
+    return AnimatedContainer(
+      constraints: BoxConstraints(
         minHeight: minDiameter,
         minWidth: minDiameter,
         maxWidth: maxDiameter,
         maxHeight: maxDiameter,
       ),
       duration: kThemeChangeDuration,
-      decoration: new BoxDecoration(
+      decoration: BoxDecoration(
         color: effectiveBackgroundColor,
         image: backgroundImage != null
-          ? new DecorationImage(image: backgroundImage, fit: BoxFit.cover)
+          ? DecorationImage(image: backgroundImage, fit: BoxFit.cover)
           : null,
         shape: BoxShape.circle,
       ),
       child: child == null
           ? null
-          : new Center(
-              child: new MediaQuery(
+          : Center(
+              child: MediaQuery(
                 // Need to ignore the ambient textScaleFactor here so that the
                 // text doesn't escape the avatar when the textScaleFactor is large.
                 data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
-                child: new IconTheme(
+                child: IconTheme(
                   data: theme.iconTheme.copyWith(color: textStyle.color),
-                  child: new DefaultTextStyle(
+                  child: DefaultTextStyle(
                     style: textStyle,
                     child: child,
                   ),

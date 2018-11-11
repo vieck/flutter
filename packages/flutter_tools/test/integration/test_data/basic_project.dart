@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_tools/src/base/file_system.dart';
-
 import 'test_project.dart';
 
 class BasicProject extends TestProject {
@@ -11,6 +9,9 @@ class BasicProject extends TestProject {
   @override
   final String pubspec = '''
   name: test
+  environment:
+    sdk: ">=2.0.0-dev.68.0 <3.0.0"
+
   dependencies:
     flutter:
       sdk: flutter
@@ -26,7 +27,7 @@ class BasicProject extends TestProject {
     @override
     Widget build(BuildContext context) {
       topLevelFunction();
-      return new MaterialApp(
+      return new MaterialApp( // BREAKPOINT
         title: 'Flutter Demo',
         home: new Container(),
       );
@@ -34,18 +35,13 @@ class BasicProject extends TestProject {
   }
 
   topLevelFunction() {
-    print("test");
+    print("topLevelFunction"); // TOP LEVEL BREAKPOINT
   }
   ''';
 
-  @override
-  String get breakpointFile => buildMethodBreakpointFile;
-  @override
-  int get breakpointLine => buildMethodBreakpointLine;
+  Uri get buildMethodBreakpointUri => breakpointUri;
+  int get buildMethodBreakpointLine => breakpointLine;
 
-  String get buildMethodBreakpointFile => fs.path.join(dir.path, 'lib', 'main.dart');
-  int get buildMethodBreakpointLine => 9;
-
-  String get topLevelFunctionBreakpointFile => fs.path.join(dir.path, 'lib', 'main.dart');
-  int get topLevelFunctionBreakpointLine => 17;
+  Uri get topLevelFunctionBreakpointUri => breakpointUri;
+  int get topLevelFunctionBreakpointLine => lineContaining(main, '// TOP LEVEL BREAKPOINT');
 }

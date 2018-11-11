@@ -19,7 +19,7 @@ import 'globals.dart';
 
 class FlutterVersion {
   @visibleForTesting
-  FlutterVersion(this._clock) {
+  FlutterVersion([this._clock = const Clock()]) {
     _channel = _runGit('git rev-parse --abbrev-ref --symbolic @{u}');
     final String branch = _runGit('git rev-parse --abbrev-ref HEAD');
     _branch = branch == 'HEAD' ? _channel : branch;
@@ -43,11 +43,11 @@ class FlutterVersion {
   String _repositoryUrl;
   String get repositoryUrl => _repositoryUrl;
 
-  static Set<String> officialChannels = new Set<String>.from(<String>[
+  static Set<String> officialChannels = Set<String>.from(<String>[
     'master',
     'dev',
     'beta',
-    'release',
+    'stable',
   ]);
 
   /// This maps old branch names to the names of branches that replaced them.
@@ -63,7 +63,7 @@ class FlutterVersion {
 
   String _channel;
   /// The channel is the upstream branch.
-  /// `master`, `dev`, `beta`, `release`; or old ones, like `alpha`, `hackathon`, ...
+  /// `master`, `dev`, `beta`, `stable`; or old ones, like `alpha`, `hackathon`, ...
   String get channel => _channel;
 
   /// The name of the local branch.
@@ -82,7 +82,7 @@ class FlutterVersion {
 
   String get frameworkDate => frameworkCommitDate;
 
-  String get dartSdkVersion => Cache.instance.dartSdkVersion.split(' ')[0];
+  String get dartSdkVersion => Cache.instance.dartSdkVersion;
 
   String get engineRevision => Cache.instance.engineRevision;
   String get engineRevisionShort => _shortGitRevision(engineRevision);
@@ -99,15 +99,16 @@ class FlutterVersion {
     final String engineText = 'Engine • revision $engineRevisionShort';
     final String toolsText = 'Tools • Dart $dartSdkVersion';
 
-    // Flutter 1.3.922-pre.2 • channel master • https://github.com/flutter/flutter.git
-    // Framework • revision 2259c59be8 • 19 minutes ago • 2016-08-15 22:51:40
-    // Engine • revision fe509b0d96
-    // Tools • Dart 1.19.0-dev.5.0
+    // Flutter 1.10.2-pre.69 • channel master • https://github.com/flutter/flutter.git
+    // Framework • revision 340c158f32 (84 minutes ago) • 2018-10-26 11:27:22 -0400
+    // Engine • revision 9c46333e14
+    // Tools • Dart 2.1.0 (build 2.1.0-dev.8.0 bf26f760b1)
 
     return '$flutterText\n$frameworkText\n$engineText\n$toolsText';
   }
 
   Map<String, Object> toJson() => <String, Object>{
+        'frameworkVersion': frameworkVersion ?? 'unknown',
         'channel': channel,
         'repositoryUrl': repositoryUrl ?? 'unknown source',
         'frameworkRevision': frameworkRevision,
@@ -158,10 +159,10 @@ class FlutterVersion {
     }
   }
 
-  static Future<Null> _removeVersionCheckRemoteIfExists() async {
+  static Future<void> _removeVersionCheckRemoteIfExists() async {
     final List<String> remotes = (await _run(<String>['git', 'remote']))
         .split('\n')
-        .map((String name) => name.trim()) // to account for OS-specific line-breaks
+        .map<String>((String name) => name.trim()) // to account for OS-specific line-breaks
         .toList();
     if (remotes.contains(_versionCheckRemote))
       await _run(<String>['git', 'remote', 'remove', _versionCheckRemote]);
@@ -228,12 +229,28 @@ class FlutterVersion {
   @visibleForTesting
   static Duration timeToPauseToLetUserReadTheMessage = const Duration(seconds: 2);
 
+  /// Reset the version freshness information by removing the stamp file.
+  ///
+  /// New version freshness information will be regenerated when
+  /// [checkFlutterVersionFreshness] is called after this. This is typically
+  /// used when switching channels so that stale information from another
+  /// channel doesn't linger.
+  static Future<void> resetFlutterVersionFreshnessCheck() async {
+    try {
+      await Cache.instance.getStampFileFor(
+        VersionCheckStamp.kFlutterVersionCheckStampFile,
+      ).delete();
+    } on FileSystemException {
+      // Ignore, since we don't mind if the file didn't exist in the first place.
+    }
+  }
+
   /// Checks if the currently installed version of Flutter is up-to-date, and
   /// warns the user if it isn't.
   ///
   /// This function must run while [Cache.lock] is acquired because it reads and
   /// writes shared cache files.
-  Future<Null> checkFlutterVersionFreshness() async {
+  Future<void> checkFlutterVersionFreshness() async {
     // Don't perform update checks if we're not on an official channel.
     if (!officialChannels.contains(_channel)) {
       return;
@@ -272,11 +289,11 @@ class FlutterVersion {
               ? newVersionAvailableMessage()
               : versionOutOfDateMessage(frameworkAge);
       printStatus(updateMessage, emphasis: true);
-      await Future.wait<Null>(<Future<Null>>[
+      await Future.wait<void>(<Future<void>>[
         stamp.store(
           newTimeWarningWasPrinted: _clock.now(),
         ),
-        new Future<Null>.delayed(timeToPauseToLetUserReadTheMessage),
+        Future<void>.delayed(timeToPauseToLetUserReadTheMessage),
       ]);
     }
   }
@@ -352,10 +369,6 @@ class FlutterVersion {
 /// Contains data and load/save logic pertaining to Flutter version checks.
 @visibleForTesting
 class VersionCheckStamp {
-  /// The prefix of the stamp file where we cache Flutter version check data.
-  @visibleForTesting
-  static const String kFlutterVersionCheckStampFile = 'flutter_version_check';
-
   const VersionCheckStamp({
     this.lastTimeVersionWasChecked,
     this.lastKnownRemoteVersion,
@@ -365,6 +378,10 @@ class VersionCheckStamp {
   final DateTime lastTimeVersionWasChecked;
   final DateTime lastKnownRemoteVersion;
   final DateTime lastTimeWarningWasPrinted;
+
+  /// The prefix of the stamp file where we cache Flutter version check data.
+  @visibleForTesting
+  static const String kFlutterVersionCheckStampFile = 'flutter_version_check';
 
   static Future<VersionCheckStamp> load() async {
     final String versionCheckStamp = Cache.instance.getStampFor(kFlutterVersionCheckStampFile);
@@ -395,14 +412,14 @@ class VersionCheckStamp {
           : null;
     }
 
-    return new VersionCheckStamp(
+    return VersionCheckStamp(
       lastTimeVersionWasChecked: readDateTime('lastTimeVersionWasChecked'),
       lastKnownRemoteVersion: readDateTime('lastKnownRemoteVersion'),
       lastTimeWarningWasPrinted: readDateTime('lastTimeWarningWasPrinted'),
     );
   }
 
-  Future<Null> store({
+  Future<void> store({
     DateTime newTimeVersionWasChecked,
     DateTime newKnownRemoteVersion,
     DateTime newTimeWarningWasPrinted,
@@ -472,7 +489,7 @@ String _runSync(List<String> command, {bool lenient = true}) {
     return results.stdout.trim();
 
   if (!lenient) {
-    throw new VersionCheckError(
+    throw VersionCheckError(
       'Command exited with code ${results.exitCode}: ${command.join(' ')}\n'
       'Standard error: ${results.stderr}'
     );
@@ -495,7 +512,7 @@ Future<String> _run(List<String> command) async {
   if (results.exitCode == 0)
     return results.stdout.trim();
 
-  throw new VersionCheckError(
+  throw VersionCheckError(
     'Command exited with code ${results.exitCode}: ${command.join(' ')}\n'
     'Standard error: ${results.stderr}'
   );
@@ -528,14 +545,14 @@ class GitTagVersion {
 
   static GitTagVersion determine() {
     final String version = _runGit('git describe --match v*.*.* --first-parent --long --tags');
-    final RegExp versionPattern = new RegExp('^v([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]+)-g([a-f0-9]+)\$');
+    final RegExp versionPattern = RegExp('^v([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]+)-g([a-f0-9]+)\$');
     final List<String> parts = versionPattern.matchAsPrefix(version)?.groups(<int>[1, 2, 3, 4, 5]);
     if (parts == null) {
       printTrace('Could not interpret results of "git describe": $version');
       return const GitTagVersion.unknown();
     }
     final List<int> parsedParts = parts.take(4).map<int>(int.tryParse).toList();
-    return new GitTagVersion(parsedParts[0], parsedParts[1], parsedParts[2], parsedParts[3], parts[4]);
+    return GitTagVersion(parsedParts[0], parsedParts[1], parsedParts[2], parsedParts[3], parts[4]);
   }
 
   String frameworkVersionFor(String revision) {

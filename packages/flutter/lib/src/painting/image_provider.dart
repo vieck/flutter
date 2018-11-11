@@ -5,7 +5,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:ui' as ui show instantiateImageCodec, Codec;
+import 'dart:ui' as ui show Codec;
 import 'dart:ui' show Size, Locale, TextDirection, hashValues;
 
 import 'package:flutter/foundation.dart';
@@ -51,7 +51,7 @@ class ImageConfiguration {
     Size size,
     String platform,
   }) {
-    return new ImageConfiguration(
+    return ImageConfiguration(
       bundle: bundle ?? this.bundle,
       devicePixelRatio: devicePixelRatio ?? this.devicePixelRatio,
       locale: locale ?? this.locale,
@@ -106,7 +106,7 @@ class ImageConfiguration {
 
   @override
   String toString() {
-    final StringBuffer result = new StringBuffer();
+    final StringBuffer result = StringBuffer();
     result.write('ImageConfiguration(');
     bool hasArguments = false;
     if (bundle != null) {
@@ -170,7 +170,7 @@ class ImageConfiguration {
 ///
 /// The following image formats are supported: {@macro flutter.dart:ui.imageFormats}
 ///
-/// ## Sample code
+/// {@tool sample}
 ///
 /// The following shows the code required to write a widget that fully conforms
 /// to the [ImageProvider] and [Widget] protocols. (It is essentially a
@@ -187,7 +187,7 @@ class ImageConfiguration {
 ///   final ImageProvider imageProvider;
 ///
 ///   @override
-///   _MyImageState createState() => new _MyImageState();
+///   _MyImageState createState() => _MyImageState();
 /// }
 ///
 /// class _MyImageState extends State<MyImage> {
@@ -237,13 +237,14 @@ class ImageConfiguration {
 ///
 ///   @override
 ///   Widget build(BuildContext context) {
-///     return new RawImage(
+///     return RawImage(
 ///       image: _imageInfo?.image, // this is a dart:ui Image object
 ///       scale: _imageInfo?.scale ?? 1.0,
 ///     );
 ///   }
 /// }
 /// ```
+/// {@end-tool}
 @optionalTypeArgs
 abstract class ImageProvider<T> {
   /// Abstract const constructor. This constructor enables subclasses to provide
@@ -259,14 +260,14 @@ abstract class ImageProvider<T> {
   /// method.
   ImageStream resolve(ImageConfiguration configuration) {
     assert(configuration != null);
-    final ImageStream stream = new ImageStream();
+    final ImageStream stream = ImageStream();
     T obtainedKey;
     obtainKey(configuration).then<void>((T key) {
       obtainedKey = key;
       stream.setCompleter(PaintingBinding.instance.imageCache.putIfAbsent(key, () => load(key)));
     }).catchError(
       (dynamic exception, StackTrace stack) async {
-        FlutterError.reportError(new FlutterErrorDetails(
+        FlutterError.reportError(FlutterErrorDetails(
           exception: exception,
           stack: stack,
           library: 'services library',
@@ -299,7 +300,7 @@ abstract class ImageProvider<T> {
   /// The [configuration] is optional and defaults to
   /// [ImageConfiguration.empty].
   ///
-  /// ## Sample code
+  /// {@tool sample}
   ///
   /// The following sample code shows how an image loaded using the [Image]
   /// widget can be evicted using a [NetworkImage] with a matching url.
@@ -310,11 +311,11 @@ abstract class ImageProvider<T> {
   ///
   ///   @override
   ///   Widget build(BuildContext context) {
-  ///     return new Image.network(url);
+  ///     return Image.network(url);
   ///   }
   ///
   ///   void evictImage() {
-  ///     final NetworkImage provider = new NetworkImage(url);
+  ///     final NetworkImage provider = NetworkImage(url);
   ///     provider.evict().then<void>((bool success) {
   ///       if (success)
   ///         debugPrint('removed image!');
@@ -322,6 +323,7 @@ abstract class ImageProvider<T> {
   ///   }
   /// }
   /// ```
+  /// {@end-tool}
   Future<bool> evict({ImageCache cache, ImageConfiguration configuration = ImageConfiguration.empty}) async {
     cache ??= imageCache;
     final T key = await obtainKey(configuration);
@@ -408,7 +410,7 @@ abstract class AssetBundleImageProvider extends ImageProvider<AssetBundleImageKe
   /// image using [loadAsync].
   @override
   ImageStreamCompleter load(AssetBundleImageKey key) {
-    return new MultiFrameImageStreamCompleter(
+    return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key),
       scale: key.scale,
       informationCollector: (StringBuffer information) {
@@ -427,7 +429,7 @@ abstract class AssetBundleImageProvider extends ImageProvider<AssetBundleImageKe
     final ByteData data = await key.bundle.load(key.name);
     if (data == null)
       throw 'Unable to read data';
-    return await ui.instantiateImageCodec(data.buffer.asUint8List());
+    return await PaintingBinding.instance.instantiateImageCodec(data.buffer.asUint8List());
   }
 }
 
@@ -460,12 +462,12 @@ class NetworkImage extends ImageProvider<NetworkImage> {
 
   @override
   Future<NetworkImage> obtainKey(ImageConfiguration configuration) {
-    return new SynchronousFuture<NetworkImage>(this);
+    return SynchronousFuture<NetworkImage>(this);
   }
 
   @override
   ImageStreamCompleter load(NetworkImage key) {
-    return new MultiFrameImageStreamCompleter(
+    return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key),
       scale: key.scale,
       informationCollector: (StringBuffer information) {
@@ -475,7 +477,7 @@ class NetworkImage extends ImageProvider<NetworkImage> {
     );
   }
 
-  static final HttpClient _httpClient = new HttpClient();
+  static final HttpClient _httpClient = HttpClient();
 
   Future<ui.Codec> _loadAsync(NetworkImage key) async {
     assert(key == this);
@@ -487,13 +489,13 @@ class NetworkImage extends ImageProvider<NetworkImage> {
     });
     final HttpClientResponse response = await request.close();
     if (response.statusCode != HttpStatus.ok)
-      throw new Exception('HTTP request failed, statusCode: ${response?.statusCode}, $resolved');
+      throw Exception('HTTP request failed, statusCode: ${response?.statusCode}, $resolved');
 
     final Uint8List bytes = await consolidateHttpClientResponseBytes(response);
     if (bytes.lengthInBytes == 0)
-      throw new Exception('NetworkImage is an empty file: $resolved');
+      throw Exception('NetworkImage is an empty file: $resolved');
 
-    return await ui.instantiateImageCodec(bytes);
+    return await PaintingBinding.instance.instantiateImageCodec(bytes);
   }
 
   @override
@@ -534,12 +536,12 @@ class FileImage extends ImageProvider<FileImage> {
 
   @override
   Future<FileImage> obtainKey(ImageConfiguration configuration) {
-    return new SynchronousFuture<FileImage>(this);
+    return SynchronousFuture<FileImage>(this);
   }
 
   @override
   ImageStreamCompleter load(FileImage key) {
-    return new MultiFrameImageStreamCompleter(
+    return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key),
       scale: key.scale,
       informationCollector: (StringBuffer information) {
@@ -555,7 +557,7 @@ class FileImage extends ImageProvider<FileImage> {
     if (bytes.lengthInBytes == 0)
       return null;
 
-    return await ui.instantiateImageCodec(bytes);
+    return await PaintingBinding.instance.instantiateImageCodec(bytes);
   }
 
   @override
@@ -602,12 +604,12 @@ class MemoryImage extends ImageProvider<MemoryImage> {
 
   @override
   Future<MemoryImage> obtainKey(ImageConfiguration configuration) {
-    return new SynchronousFuture<MemoryImage>(this);
+    return SynchronousFuture<MemoryImage>(this);
   }
 
   @override
   ImageStreamCompleter load(MemoryImage key) {
-    return new MultiFrameImageStreamCompleter(
+    return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key),
       scale: key.scale
     );
@@ -616,7 +618,7 @@ class MemoryImage extends ImageProvider<MemoryImage> {
   Future<ui.Codec> _loadAsync(MemoryImage key) {
     assert(key == this);
 
-    return ui.instantiateImageCodec(bytes);
+    return PaintingBinding.instance.instantiateImageCodec(bytes);
   }
 
   @override
@@ -659,7 +661,7 @@ class MemoryImage extends ImageProvider<MemoryImage> {
 /// Then, to fetch the image and associate it with scale `1.5`, use
 ///
 /// ```dart
-/// new AssetImage('icons/heart.png', scale: 1.5)
+/// AssetImage('icons/heart.png', scale: 1.5)
 /// ```
 ///
 ///## Assets in packages
@@ -669,7 +671,7 @@ class MemoryImage extends ImageProvider<MemoryImage> {
 /// `my_icons`. Then to fetch the image, use:
 ///
 /// ```dart
-/// new AssetImage('icons/heart.png', scale: 1.5, package: 'my_icons')
+/// AssetImage('icons/heart.png', scale: 1.5, package: 'my_icons')
 /// ```
 ///
 /// Assets used by the package itself should also be fetched using the [package]
@@ -698,8 +700,7 @@ class MemoryImage extends ImageProvider<MemoryImage> {
 ///    - packages/fancy_backgrounds/backgrounds/background1.png
 /// ```
 ///
-/// Note that the `lib/` is implied, so it should not be included in the asset
-/// path.
+/// The `lib/` is implied, so it should not be included in the asset path.
 ///
 /// See also:
 ///
@@ -749,7 +750,7 @@ class ExactAssetImage extends AssetBundleImageProvider {
 
   @override
   Future<AssetBundleImageKey> obtainKey(ImageConfiguration configuration) {
-    return new SynchronousFuture<AssetBundleImageKey>(new AssetBundleImageKey(
+    return SynchronousFuture<AssetBundleImageKey>(AssetBundleImageKey(
       bundle: bundle ?? configuration.bundle ?? rootBundle,
       name: keyName,
       scale: scale

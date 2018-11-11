@@ -14,11 +14,11 @@ import 'package:flutter_tools/src/ios/cocoapods.dart';
 import 'package:flutter_tools/src/ios/xcodeproj.dart';
 import 'package:mockito/mockito.dart';
 import 'package:process/process.dart';
-import 'package:test/test.dart';
 
+import '../src/common.dart';
 import '../src/context.dart';
 
-typedef Future<ProcessResult> InvokeProcess();
+typedef InvokeProcess = Future<ProcessResult> Function();
 
 void main() {
   FileSystem fs;
@@ -40,14 +40,14 @@ void main() {
     resultOfPodVersion = () async => exitsHappy(versionText);
   }
 
-  setUp(() {
+  setUp(() async {
     Cache.flutterRoot = 'flutter';
-    fs = new MemoryFileSystem();
-    mockProcessManager = new MockProcessManager();
-    mockXcodeProjectInterpreter = new MockXcodeProjectInterpreter();
-    projectUnderTest = new FlutterProject(fs.directory('project'));
-    projectUnderTest.ios.directory.createSync(recursive: true);
-    cocoaPodsUnderTest = new CocoaPods();
+    fs = MemoryFileSystem();
+    mockProcessManager = MockProcessManager();
+    mockXcodeProjectInterpreter = MockXcodeProjectInterpreter();
+    projectUnderTest = await FlutterProject.fromDirectory(fs.directory('project'));
+    projectUnderTest.ios.xcodeProject.createSync(recursive: true);
+    cocoaPodsUnderTest = CocoaPods();
     pretendPodVersionIs('1.5.0');
     fs.file(fs.path.join(
       Cache.flutterRoot, 'packages', 'flutter_tools', 'templates', 'cocoapods', 'Podfile-objc'
@@ -138,7 +138,7 @@ void main() {
         'SWIFT_VERSION': '4.0',
       });
 
-      final FlutterProject project = new FlutterProject.fromPath('project');
+      final FlutterProject project = await FlutterProject.fromPath('project');
       cocoaPodsUnderTest.setupPodfile(project.ios);
 
       expect(projectUnderTest.ios.podfile.readAsStringSync(), 'Swift podfile template');
@@ -150,7 +150,7 @@ void main() {
     testUsingContext('does not recreate Podfile when already present', () async {
       projectUnderTest.ios.podfile..createSync()..writeAsStringSync('Existing Podfile');
 
-      final FlutterProject project = new FlutterProject.fromPath('project');
+      final FlutterProject project = await FlutterProject.fromPath('project');
       cocoaPodsUnderTest.setupPodfile(project.ios);
 
       expect(projectUnderTest.ios.podfile.readAsStringSync(), 'Existing Podfile');
@@ -161,7 +161,7 @@ void main() {
     testUsingContext('does not create Podfile when we cannot interpret Xcode projects', () async {
       when(mockXcodeProjectInterpreter.isInstalled).thenReturn(false);
 
-      final FlutterProject project = new FlutterProject.fromPath('project');
+      final FlutterProject project = await FlutterProject.fromPath('project');
       cocoaPodsUnderTest.setupPodfile(project.ios);
 
       expect(projectUnderTest.ios.podfile.existsSync(), false);
@@ -179,7 +179,7 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync('Existing release config');
 
-      final FlutterProject project = new FlutterProject.fromPath('project');
+      final FlutterProject project = await FlutterProject.fromPath('project');
       cocoaPodsUnderTest.setupPodfile(project.ios);
 
       final String debugContents = projectUnderTest.ios.xcodeConfigFor('Debug').readAsStringSync();
@@ -224,7 +224,7 @@ void main() {
         );
         fail('ToolExit expected');
       } catch(e) {
-        expect(e, const isInstanceOf<ToolExit>());
+        expect(e, isInstanceOf<ToolExit>());
         verifyNever(mockProcessManager.run(
         argThat(containsAllInOrder(<String>['pod', 'install'])),
           workingDirectory: anyNamed('workingDirectory'),
@@ -271,7 +271,7 @@ Note: as of CocoaPods 1.0, `pod repo update` does not happen on `pod install` by
         );
         fail('ToolExit expected');
       } catch (e) {
-        expect(e, const isInstanceOf<ToolExit>());
+        expect(e, isInstanceOf<ToolExit>());
         expect(
           testLogger.errorText,
           contains("CocoaPods's specs repository is too out-of-date to satisfy dependencies"),
@@ -399,7 +399,7 @@ Note: as of CocoaPods 1.0, `pod repo update` does not happen on `pod install` by
       projectUnderTest.ios.podManifestLock
         ..createSync(recursive: true)
         ..writeAsStringSync('Existing lock file.');
-      await new Future<void>.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       projectUnderTest.ios.podfile
         ..writeAsStringSync('Updated Podfile');
       await cocoaPodsUnderTest.processPods(
@@ -488,5 +488,5 @@ Note: as of CocoaPods 1.0, `pod repo update` does not happen on `pod install` by
 class MockProcessManager extends Mock implements ProcessManager {}
 class MockXcodeProjectInterpreter extends Mock implements XcodeProjectInterpreter {}
 
-ProcessResult exitsWithError([String stdout = '']) => new ProcessResult(1, 1, stdout, '');
-ProcessResult exitsHappy([String stdout = '']) => new ProcessResult(1, 0, stdout, '');
+ProcessResult exitsWithError([String stdout = '']) => ProcessResult(1, 1, stdout, '');
+ProcessResult exitsHappy([String stdout = '']) => ProcessResult(1, 0, stdout, '');

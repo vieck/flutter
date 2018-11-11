@@ -38,6 +38,28 @@ import 'theme.dart';
 ///    integration.
 ///  * [InputDecorator], which shows the labels and other visual elements that
 ///    surround the actual text editing widget.
+///
+/// {@tool sample}
+///
+/// Creates a [TextFormField] with an [InputDecoration] and validator function.
+///
+/// ```dart
+/// TextFormField(
+///   decoration: const InputDecoration(
+///     icon: Icon(Icons.person),
+///     hintText: 'What do people call you?',
+///     labelText: 'Name *',
+///   ),
+///   onSaved: (String value) {
+///     // This optional block of code can be used to run
+///     // code when the user saves the form.
+///   },
+///   validator: (String value) {
+///     return value.contains('@') ? 'Do not use the @ char.' : null;
+///   },
+/// )
+/// ```
+/// {@end-tool}
 class TextFormField extends FormField<String> {
   /// Creates a [FormField] that contains a [TextField].
   ///
@@ -54,10 +76,11 @@ class TextFormField extends FormField<String> {
     String initialValue,
     FocusNode focusNode,
     InputDecoration decoration = const InputDecoration(),
-    TextInputType keyboardType = TextInputType.text,
+    TextInputType keyboardType,
     TextCapitalization textCapitalization = TextCapitalization.none,
-    TextInputAction textInputAction = TextInputAction.done,
+    TextInputAction textInputAction,
     TextStyle style,
+    TextDirection textDirection,
     TextAlign textAlign = TextAlign.start,
     bool autofocus = false,
     bool obscureText = false,
@@ -71,12 +94,11 @@ class TextFormField extends FormField<String> {
     FormFieldSetter<String> onSaved,
     FormFieldValidator<String> validator,
     List<TextInputFormatter> inputFormatters,
-    bool enabled,
+    bool enabled = true,
     Brightness keyboardAppearance,
     EdgeInsets scrollPadding = const EdgeInsets.all(20.0),
+    bool enableInteractiveSelection = true,
   }) : assert(initialValue == null || controller == null),
-       assert(keyboardType != null),
-       assert(textInputAction != null),
        assert(textAlign != null),
        assert(autofocus != null),
        assert(obscureText != null),
@@ -86,17 +108,19 @@ class TextFormField extends FormField<String> {
        assert(scrollPadding != null),
        assert(maxLines == null || maxLines > 0),
        assert(maxLength == null || maxLength > 0),
+       assert(enableInteractiveSelection != null),
        super(
     key: key,
     initialValue: controller != null ? controller.text : (initialValue ?? ''),
     onSaved: onSaved,
     validator: validator,
     autovalidate: autovalidate,
+    enabled: enabled,
     builder: (FormFieldState<String> field) {
       final _TextFormFieldState state = field;
       final InputDecoration effectiveDecoration = (decoration ?? const InputDecoration())
         .applyDefaults(Theme.of(field.context).inputDecorationTheme);
-      return new TextField(
+      return TextField(
         controller: state._effectiveController,
         focusNode: focusNode,
         decoration: effectiveDecoration.copyWith(errorText: field.errorText),
@@ -104,6 +128,7 @@ class TextFormField extends FormField<String> {
         textInputAction: textInputAction,
         style: style,
         textAlign: textAlign,
+        textDirection: textDirection,
         textCapitalization: textCapitalization,
         autofocus: autofocus,
         obscureText: obscureText,
@@ -118,6 +143,7 @@ class TextFormField extends FormField<String> {
         enabled: enabled,
         scrollPadding: scrollPadding,
         keyboardAppearance: keyboardAppearance,
+        enableInteractiveSelection: enableInteractiveSelection,
       );
     },
   );
@@ -129,7 +155,7 @@ class TextFormField extends FormField<String> {
   final TextEditingController controller;
 
   @override
-  _TextFormFieldState createState() => new _TextFormFieldState();
+  _TextFormFieldState createState() => _TextFormFieldState();
 }
 
 class _TextFormFieldState extends FormFieldState<String> {
@@ -144,7 +170,7 @@ class _TextFormFieldState extends FormFieldState<String> {
   void initState() {
     super.initState();
     if (widget.controller == null) {
-      _controller = new TextEditingController(text: widget.initialValue);
+      _controller = TextEditingController(text: widget.initialValue);
     } else {
       widget.controller.addListener(_handleControllerChanged);
     }
@@ -158,7 +184,7 @@ class _TextFormFieldState extends FormFieldState<String> {
       widget.controller?.addListener(_handleControllerChanged);
 
       if (oldWidget.controller != null && widget.controller == null)
-        _controller = new TextEditingController.fromValue(oldWidget.controller.value);
+        _controller = TextEditingController.fromValue(oldWidget.controller.value);
       if (widget.controller != null) {
         setValue(widget.controller.text);
         if (oldWidget.controller == null)

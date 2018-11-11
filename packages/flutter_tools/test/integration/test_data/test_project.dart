@@ -16,8 +16,8 @@ abstract class TestProject {
   String get main;
 
   // Valid locations for a breakpoint for tests that just need to break somewhere.
-  String get breakpointFile;
-  int get breakpointLine;
+  Uri get breakpointUri => Uri.parse('package:test/main.dart');
+  int get breakpointLine => lineContaining(main, '// BREAKPOINT');
 
   Future<void> setUpIn(Directory dir) async {
     this.dir = dir;
@@ -26,7 +26,10 @@ abstract class TestProject {
     await getPackages(dir.path);
   }
 
-  void cleanup() {
-    dir?.deleteSync(recursive: true);
+  int lineContaining(String contents, String search) {
+    final int index = contents.split('\n').indexWhere((String l) => l.contains(search));
+    if (index == -1)
+      throw Exception("Did not find '$search' inside the file");
+    return index;
   }
 }
